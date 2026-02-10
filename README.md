@@ -1,63 +1,89 @@
-# n8sight
+<p align="center">
+  <h1 align="center">n8sight</h1>
+  <p align="center">
+    <strong>A real-time terminal dashboard for <a href="https://n8n.io">n8n</a></strong>
+  </p>
+  <p align="center">
+    Monitor workflows. Track executions. Catch failures. Visualize your automation fleet — from the command line.
+  </p>
+  <p align="center">
+    <a href="https://github.com/flancast90/n8sight/releases"><img src="https://img.shields.io/github/v/release/flancast90/n8sight?style=flat-square&color=cyan" alt="Release"></a>
+    <a href="https://github.com/flancast90/n8sight/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
+    <a href="https://github.com/flancast90/n8sight"><img src="https://img.shields.io/github/stars/flancast90/n8sight?style=flat-square&color=yellow" alt="Stars"></a>
+    <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/built%20with-Rust-orange?style=flat-square&logo=rust" alt="Rust"></a>
+    <a href="https://ratatui.rs"><img src="https://img.shields.io/badge/TUI-ratatui-purple?style=flat-square" alt="ratatui"></a>
+  </p>
+</p>
 
-A real-time terminal dashboard for [n8n](https://n8n.io) — monitor workflows, track executions, catch failures, and visualize your automation fleet from the command line.
+---
 
-```
-┌─ n8sight ──────────────────────────────────────────────────────────────────┐
-│  ⚙ Workflows  │  ▶ Executions  │  ⚡ Insights                             │
-├────────────────────────────────────────────────────────────────────────────┤
-│ ┌ Quick Stats ───────────────────────────────────────────────────────────┐ │
-│ │ TOTAL  20   ACTIVE  14 (70%) ██████████████  INACTIVE  6 (30%) ██████ │ │
-│ └────────────────────────────────────────────────────────────────────────┘ │
-│ ┌ Active Rate: 70% (14/20) ─────────────────────────────────────────────┐ │
-│ │ ███████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░ │ │
-│ └────────────────────────────────────────────────────────────────────────┘ │
-│ ┌ Workflows ─────────────────────────────────────────────────────────────┐ │
-│ │ ID     Name                     Active       Tags           Updated   │ │
-│ │ 2XEs   PhoneValidator           ● active     production     284d ago  │ │
-│ │ 0sKe   Shabaigs Email Listen…   ○ inactive                  90d ago   │ │
-│ │ 1MsD   Follow Up Context        ● active                    284d ago  │ │
-│ │ 07QO   service edit             ● active                    192d ago  │ │
-│ └────────────────────────────────────────────────────────────────────────┘ │
-│  j/k:nav  Enter:detail  a/i/0:filter  n/s/u:sort  /:search       ⟳ 12s  │
-└────────────────────────────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="assets/executions.png" width="100%" alt="Executions view with sparkline, gauges, and status distribution">
+</p>
 
 ## Why
 
-n8n's web UI is great for building workflows. It's not great for monitoring a fleet of them. When you have 20+ active workflows firing thousands of executions, you need:
+n8n's web UI is great for building workflows. It's not great for monitoring a fleet of them.
+
+When you have 20+ active workflows firing thousands of executions, you need:
 
 - A dashboard that auto-refreshes and shows what's happening **right now**
 - Failure rates, stuck executions, and retry storms surfaced **immediately**
 - The ability to drill into any execution and see per-node timing at a glance
 - Something that works over SSH, in tmux, without a browser
 
-n8sight is that.
+**n8sight is that.** One command. One binary. Zero dependencies.
+
+## Screenshots
+
+<details open>
+<summary><strong>Workflows</strong> — fleet overview with active rate gauge and stats</summary>
+<br>
+<img src="assets/workflows.png" width="100%" alt="Workflows tab">
+</details>
+
+<details open>
+<summary><strong>Executions</strong> — live success rate, sparkline, and execution table</summary>
+<br>
+<img src="assets/executions.png" width="100%" alt="Executions tab">
+</details>
+
+<details open>
+<summary><strong>Execution Detail</strong> — node waterfall timeline with per-node stats</summary>
+<br>
+<img src="assets/waterfall.png" width="100%" alt="Execution waterfall">
+</details>
+
+<details open>
+<summary><strong>Workflow Graph</strong> — interactive ASCII node graph with pan and inspect</summary>
+<br>
+<img src="assets/graph.png" width="100%" alt="Workflow graph">
+</details>
+
+<details open>
+<summary><strong>Insights</strong> — fleet health scan: failures, stuck executions, abandoned workflows</summary>
+<br>
+<img src="assets/insights.png" width="100%" alt="Insights view">
+</details>
 
 ## Install
 
 ```bash
-# From source
 git clone https://github.com/flancast90/n8sight.git
 cd n8sight
 cargo build --release
 # Binary at ./target/release/n8s
 ```
 
-Requires Rust 1.75+.
+> Requires [Rust](https://rustup.rs) 1.75+. Single binary, no runtime dependencies.
 
 ## Setup
 
 ### 1. Get your API key
 
-1. Log in to your n8n instance
-2. Go to **Settings → n8n API**
-3. Click **Create an API key**
-4. Copy the key
+Go to your n8n instance → **Settings → n8n API** → **Create an API key**
 
-### 2. Configure
-
-Create the config file at the OS-native config directory:
+### 2. Create config
 
 **macOS**: `~/Library/Application Support/n8sight/config.toml`
 **Linux**: `~/.config/n8sight/config.toml`
@@ -74,116 +100,58 @@ export N8N_API_URL=https://your-instance.example.com
 export N8N_API_KEY=your-api-key-here
 ```
 
-### 3. Run
+### 3. Launch
 
 ```bash
-n8s          # launch the dashboard
-n8s --mock   # demo mode with fake data (no n8n needed)
+n8s          # dashboard connected to your instance
+n8s --mock   # demo mode with fake data
 ```
-
-That's it. One command.
 
 ## Features
 
-### Real-time dashboard
-
-Auto-refreshes every 15 seconds. Press `p` to pause, `p` to resume. The countdown lives in the bottom-right corner.
-
-### Workflows tab
-
-Stats bar with active/inactive counts and percentages. Active rate gauge. Sortable, filterable table. Press Enter to see the workflow graph.
-
-### Executions tab
-
-Live success/error/running counts with percentages. Success rate gauge that goes green/yellow/red. Full-width sparkline showing execution frequency over time (one column per minute, fills the entire terminal width). Filterable by status.
-
-```
-┌ Quick Stats ─────────────────────────────────────────────────────────────────┐
-│ TOTAL  487   ✓  421 (86%) █████████████████  ✗  31 (6%) █  ⟳  12  AVG 2.1s │
-└──────────────────────────────────────────────────────────────────────────────┘
-┌ Success Rate: 86% (421/487)  ·  Error Rate: 6% (31/487) ────────────────────┐
-│ ████████████████████████████████████████████████████████████████████░░░░░░░░ │
-└──────────────────────────────────────────────────────────────────────────────┘
-┌ Execution Frequency (last 139min · peak: 41/min) ────────────────────────────┐
-│ ▁▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▁▂▃▄▅▆▇█▇▆▅▃▂▁▁▂▃▅▆▇██▇▆▅▄▃▂▁▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▁▂▃▄▅▆▇█▇ │
-│ ▃▄▅▆▇██▇▆▅▄▃▂▁▁▂▃▅▆▇██▇▆▅▃▂▁▁▂▃▅▆▇███▇▆▅▄▃▂▁▁▂▃▄▅▆▇██▇▆▅▄▃▂▁▁▂▃▄▅▆▇██▇ │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Execution detail
-
-Node-level waterfall timeline showing where time was spent. Each node rendered as a proportional bar with duration and percentage of total. Quick stats on node success rate, slowest node, total items processed.
-
-```
-┌ ⏱ Node Waterfall ────────────────────────────────────────────────────────────┐
-│         Webhook █ 1ms (0%)                                                   │
-│      Set Fields █ 3ms (0%)                                                   │
-│              IF █ 1ms (0%)                                                   │
-│      Send Email ██████████████████████████████████████████████ 450ms (96%)    │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Interactive workflow graph
-
-Press Enter on any workflow to see its node graph rendered in ASCII with box-drawing characters. Pan with arrow keys or `h`/`j`/`k`/`l`. Tab cycles through nodes. Trigger nodes glow yellow, selected node highlighted in cyan.
-
-```
-┌──────────────────┐         ┌──────────────────┐         ┌──────────────────┐
-│ Webhook          │────────▶│ Set Fields        │────────▶│ IF               │
-│ webhook          │         │ set               │         │ if               │
-└──────────────────┘         └──────────────────┘         └───────┬──────────┘
-                                                                  │
-                                                         ┌───────┘
-                                                         │
-                                                ┌────────▼─────────┐
-                                                │ Send Email        │
-                                                │ emailSend         │
-                                                └──────────────────┘
-```
-
-### Fleet insights
-
-Scans your instance and surfaces problems automatically:
-
-| Finding | What it catches |
+| Feature | Description |
 |---|---|
-| **High Failure Rate** | Workflows with >50% error rate (critical) or >20% (warning) |
-| **Stuck Execution** | Executions running/waiting for >30min (warning) or >2h (critical) |
-| **Retry Storm** | Workflows with 3+ (warning) or 5+ (critical) retries |
-| **Long Running** | Executions >3x the average for their workflow |
-| **Abandoned Workflow** | Active workflows with no executions in 30+ days |
-| **Inactive Critical** | Workflows tagged `production`/`critical` that are deactivated |
+| **Auto-refresh** | Updates every 15s. Press `p` to pause/resume. Countdown in the corner. |
+| **Workflows** | Active/inactive stats, active rate gauge, sortable & filterable table |
+| **Executions** | Success rate gauge, execution frequency sparkline, status filters |
+| **Waterfall** | Per-node execution timeline showing where time was spent |
+| **Node graph** | Interactive ASCII workflow visualization with pan & node inspect |
+| **Node inspect** | Full parameter JSON (scrollable), connections, credentials |
+| **Fleet insights** | Auto-detects: high failure rates, stuck executions, retry storms, abandoned workflows |
+| **Keyboard-driven** | Vim-style navigation. No mouse needed. |
 
-## Keyboard reference
+## Keyboard shortcuts
 
-### Navigation
+<details>
+<summary><strong>Navigation</strong></summary>
 
 | Key | Action |
 |---|---|
 | `j`/`k` or `↑`/`↓` | Move up/down |
-| `g`/`G` | Jump to top/bottom |
-| `Ctrl+D`/`Ctrl+U` | Half page down/up |
+| `g`/`G` | Top/bottom |
 | `Enter` | Drill into detail |
 | `Esc` | Go back |
-| `Tab` | Cycle tabs (or cycle nodes in graph view) |
+| `Tab` | Cycle tabs (or nodes in graph) |
 | `Alt+1`/`2`/`3` | Jump to Workflows/Executions/Insights |
 
-### Filtering & sorting
+</details>
+
+<details>
+<summary><strong>Filtering & sorting</strong></summary>
 
 | Key | Context | Action |
 |---|---|---|
 | `/` | Any list | Text search |
-| `a` | Workflows | Show active only |
-| `i` | Workflows | Show inactive only |
-| `0` | Workflows | Clear filter |
-| `1`–`5` | Executions | Filter: error/running/success/waiting/canceled |
-| `0` | Executions | Clear status filter |
-| `n` | Any list | Sort by name |
-| `s` | Any list | Sort by status |
+| `a`/`i`/`0` | Workflows | Active / Inactive / Clear |
+| `1`–`5` / `0` | Executions | Error/Running/Success/Waiting/Canceled / Clear |
+| `n`/`s` | Any list | Sort by name / status |
 | `u` | Workflows | Sort by updated |
 | `d` | Executions | Sort by duration |
 
-### Actions
+</details>
+
+<details>
+<summary><strong>Actions</strong></summary>
 
 | Key | Action |
 |---|---|
@@ -196,63 +164,71 @@ Scans your instance and surfaces problems automatically:
 | `?` | Help overlay |
 | `q` (×2) | Quit |
 
-### Graph view
+</details>
+
+<details>
+<summary><strong>Graph view</strong></summary>
 
 | Key | Action |
 |---|---|
-| `h`/`j`/`k`/`l` or arrows | Pan the graph |
+| `h`/`j`/`k`/`l` or arrows | Pan |
 | `Tab` | Select next node |
-| `0` | Reset pan to origin |
-| `Esc` | Back to workflow list |
+| `Enter` | Inspect selected node |
+| `0` | Reset pan |
+| `Esc` | Back |
 
-## Architecture
+</details>
 
-Built in Rust with [ratatui](https://ratatui.rs). Single binary, no runtime dependencies.
+<details>
+<summary><strong>Node inspect</strong></summary>
 
-```
-src/
-  main.rs            One entry point. TUI only. Effect processing loop.
-  app.rs             State machine — update(action) → effects. Zero side effects.
-  action.rs          Action enum (inputs) + Effect enum (outputs)
-  event.rs           Terminal events → raw Key actions
-  scroll_state.rs    Generic scrollable list with ratatui TableState
-  cli_worker.rs      Async API call serializer via mpsc channels
-  config.rs          Layered config: CLI flags > env vars > config file
-  client/            N8nClient trait + HTTP (reqwest) + mock implementations
-  domain/            Business logic: workflow/execution models, insight algorithms
-  widgets/           TUI rendering: graphs, charts, gauges, tables, sparklines
-```
+| Key | Action |
+|---|---|
+| `j`/`k` | Scroll parameters |
+| `d`/`u` | Page down/up |
+| `g`/`G` | Top/bottom |
+| `n`/`N` or `Tab`/`Shift+Tab` | Next/previous node |
+| `Esc` | Back to graph |
 
-### Key design decisions
-
-- **TEA-inspired**: `App::update()` returns `Vec<Effect>`. Side effects processed externally. Update is testable.
-- **Mode-aware keys**: Event handler sends raw `KeyEvent`. App dispatches based on current view + input mode. No key bleed across views.
-- **Cached filtering**: Filtered lists computed once, invalidated on change. Not recomputed every frame.
-- **No `Utc::now()` in render**: `app.now` captured once per frame via `tick_frame()`.
-- **Node runs parsed once**: Execution JSON parsed on load, cached in `cached_node_runs`. Zero re-parsing per frame.
+</details>
 
 ## n8n API coverage
 
 | Endpoint | Used for |
 |---|---|
 | `GET /workflows` | Workflow list with filtering |
-| `GET /workflows/{id}` | Full detail: nodes, connections, settings |
+| `GET /workflows/{id}` | Full detail: nodes, connections, graph |
 | `POST /workflows/{id}/activate` | Activate from TUI |
 | `POST /workflows/{id}/deactivate` | Deactivate from TUI |
-| `GET /executions` | Execution list with status/workflow filtering |
+| `GET /executions` | Execution list with status filtering |
 | `GET /executions/{id}?includeData=true` | Per-node execution data |
 | `POST /executions/{id}/retry` | Retry from TUI |
+
+## Architecture
+
+```
+src/
+  main.rs            Entry point. TUI-only. Effect processing loop.
+  app.rs             State machine — update(action) → effects
+  action.rs          Action enum (inputs) + Effect enum (outputs)
+  scroll_state.rs    Generic scrollable list with TableState
+  cli_worker.rs      Async API serializer via mpsc channels
+  config.rs          Layered config: CLI flags > env > file
+  client/            N8nClient trait + HTTP + mock
+  domain/            Models, insight algorithms
+  widgets/           Graphs, gauges, sparklines, tables, waterfalls
+```
 
 ## Contributing
 
 ```bash
 cargo run -- --mock   # TUI with fake data
-cargo test            # 9 tests
-cargo clippy          # Zero warnings
-cargo fmt             # Format
+cargo test            # run tests
+cargo clippy          # lint
+cargo fmt             # format
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for project structure and architecture guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture guide.
 
 ## License
 
