@@ -1,0 +1,71 @@
+[package]
+name = "n8sight"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "A TUI and CLI for monitoring and managing n8n workflow executions"
+license = "MIT"
+repository = "https://github.com/flancast90/n8sight"
+homepage = "https://github.com/flancast90/n8sight"
+readme = "README.md"
+keywords = ["n8n", "tui", "cli", "workflow", "monitoring"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "n8s"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# TUI
+ratatui = "0.29"
+crossterm = "0.28"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+color-eyre = "0.6"
+thiserror = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+
+# Config
+dotenvy = "0.15"
+dirs = "6"
+toml = "0.8"
+
+# Async trait
+async-trait = "0.1"
+
+# Futures
+futures = "0.3"
+
+# Clipboard
+arboard = "3"
+
+# Open URLs
+open = "5"
+
+[dev-dependencies]
+pretty_assertions = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

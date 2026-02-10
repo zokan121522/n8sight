@@ -1,0 +1,38 @@
+# Build artifacts
+/target/
+debug/
+*.pdb
+
+# Cargo
+Cargo.lock
+# Note: Cargo.lock IS committed for binary crates (see below).
+# We include it since n8sight is a binary, not a library.
+!Cargo.lock
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Config files with credentials
+config.toml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Coverage
+tarpaulin-report.html
+lcov.info
