@@ -90,6 +90,7 @@ pub struct App {
 
     // -- Trigger webhook --
     pub trigger_input: String,
+    pub trigger_cursor: usize,      // byte index within trigger_input
     pub trigger_webhook_path: Option<String>,
 
     // -- Render context: captured once per frame --
@@ -162,6 +163,7 @@ impl App {
             filter_input: String::new(),
 
             trigger_input: String::new(),
+            trigger_cursor: 0,
             trigger_webhook_path: None,
 
             now: Utc::now(),
@@ -409,6 +411,7 @@ impl App {
                     }
 
                     self.trigger_webhook_path = Some(webhook_path.clone());
+                    self.trigger_cursor = 0;
 
                     // Pre-fill with a default JSON template for immediate editing
                     self.trigger_input = format!(
@@ -419,6 +422,7 @@ impl App {
 }}"#,
                         webhook_path,
                     );
+                    self.trigger_cursor = self.trigger_input.len();
 
                     self.input_mode = InputMode::Trigger;
                     self.status_message = Some("Edit JSON payload in full-screen editor (Ctrl+S to send)".into());
@@ -426,11 +430,11 @@ impl App {
                 vec![]
             }
             Action::TriggerChar(c) => {
-                self.trigger_input.push(c);
+                self.trigger_insert_at_cursor(c);
                 vec![]
             }
             Action::TriggerBackspace => {
-                self.trigger_input.pop();
+                self.trigger_delete_before_cursor();
                 vec![]
             }
             Action::SubmitTrigger => {
@@ -491,44 +495,86 @@ impl App {
 
     fn handle_trigger_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
+            // ── Exit / submit ──
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.trigger_input.clear();
+                self.trigger_cursor = 0;
                 self.status_message = Some("Trigger cancelled".into());
                 vec![]
             }
-            KeyCode::Enter => {
-                // Insert newline for multi-line JSON
-                self.trigger_input.push('\n');
-                vec![]
-            }
-            KeyCode::Backspace => self.update(Action::TriggerBackspace),
             KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Ctrl+S to submit
                 self.update(Action::SubmitTrigger)
             }
-            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Delete word backward
-                let trimmed = self.trigger_input.trim_end().to_string();
-                if let Some(pos) = trimmed[..trimmed.len().saturating_sub(1)]
-                    .rfind(|c: char| c == ' ' || c == '\n' || c == '\t')
-                {
-                    self.trigger_input.truncate(pos + 1);
-                } else {
-                    self.trigger_input.clear();
+
+            // ── Cursor navigation ──
+            KeyCode::Left | KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.trigger_cursor_left();
+                vec![]
+            }
+            KeyCode::Right | KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.trigger_cursor_right();
+                vec![]
+            }
+            KeyCode::Up => {
+                self.trigger_cursor_up();
+                vec![]
+            }
+            KeyCode::Down => {
+                self.trigger_cursor_down();
+                vec![]
+            }
+            KeyCode::Home => {
+                self.trigger_home();
+                vec![]
+            }
+            KeyCode::End => {
+                self.trigger_end();
+                vec![]
+            }
+
+            // ── Insert / delete ──
+            KeyCode::Enter => {
+                self.trigger_insert_at_cursor('\n');
+                vec![]
+            }
+            KeyCode::Backspace => {
+                self.trigger_delete_before_cursor();
+                vec![]
+            }
+            KeyCode::Delete => {
+                // Delete char AT cursor (not before)
+                if self.trigger_cursor < self.trigger_input.len() {
+                    let c_len = self.trigger_input[self.trigger_cursor..]
+                        .chars()
+                        .next()
+                        .map(|c| c.len_utf8())
+                        .unwrap_or(1);
+                    self.trigger_input.drain(self.trigger_cursor..self.trigger_cursor + c_len);
                 }
+                vec![]
+            }
+
+            // ── Word / line editing ──
+            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.trigger_delete_word();
                 vec![]
             }
             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Clear line (delete from cursor to start of line)
-                if let Some(pos) = self.trigger_input.rfind('\n') {
-                    self.trigger_input.truncate(pos + 1);
-                } else {
-                    self.trigger_input.clear();
-                }
+                self.trigger_clear_line();
                 vec![]
             }
-            KeyCode::Char(c) => self.update(Action::TriggerChar(c)),
+
+            // ── Character input ──
+            KeyCode::Tab => {
+                self.trigger_insert_at_cursor(' ');
+                self.trigger_insert_at_cursor(' ');
+                vec![]
+            }
+            KeyCode::Char(c) => {
+                self.trigger_insert_at_cursor(c);
+                vec![]
+            }
             _ => vec![],
         }
     }
@@ -1144,5 +1190,181 @@ impl App {
         } else {
             ""
         }
+    }
+
+    // ─── Trigger editor navigation helpers ──────────────────────────────
+
+    pub fn trigger_insert_at_cursor(&mut self, c: char) {
+        if self.trigger_cursor <= self.trigger_input.len() {
+            self.trigger_input.insert(self.trigger_cursor, c);
+            self.trigger_cursor += c.len_utf8();
+        }
+    }
+
+    pub fn trigger_delete_before_cursor(&mut self) {
+        if self.trigger_cursor > 0 {
+            let prev = self.trigger_input[..self.trigger_cursor]
+                .chars()
+                .next_back()
+                .unwrap();
+            self.trigger_cursor -= prev.len_utf8();
+            self.trigger_input.remove(self.trigger_cursor);
+        }
+    }
+
+    pub fn trigger_cursor_left(&mut self) {
+        if self.trigger_cursor > 0 {
+            let prev = self.trigger_input[..self.trigger_cursor]
+                .chars()
+                .next_back()
+                .unwrap();
+            self.trigger_cursor -= prev.len_utf8();
+        }
+    }
+
+    pub fn trigger_cursor_right(&mut self) {
+        if self.trigger_cursor < self.trigger_input.len() {
+            let next = self.trigger_input[self.trigger_cursor..]
+                .chars()
+                .next()
+                .unwrap();
+            self.trigger_cursor += next.len_utf8();
+        }
+    }
+
+    pub fn trigger_cursor_up(&mut self) {
+        if self.trigger_cursor == 0 {
+            return;
+        }
+        let text = &self.trigger_input;
+        // Start of current line
+        let line_start = text[..self.trigger_cursor]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        if line_start == 0 {
+            return; // already first line
+        }
+        // Column (chars from line start)
+        let col = text[line_start..self.trigger_cursor].chars().count();
+        // Previous line boundaries
+        let prev_line_end = line_start.saturating_sub(1);
+        let prev_line_start = text[..prev_line_end]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let prev_line = &text[prev_line_start..prev_line_end];
+        let prev_len = prev_line.chars().count();
+        // Place at same column or end of previous line
+        let target_col = col.min(prev_len);
+        let byte_offset: usize = prev_line
+            .chars()
+            .take(target_col)
+            .map(|c| c.len_utf8())
+            .sum();
+        self.trigger_cursor = prev_line_start + byte_offset;
+    }
+
+    pub fn trigger_cursor_down(&mut self) {
+        let text = &self.trigger_input;
+        if text.is_empty() {
+            return;
+        }
+        // Start of current line
+        let line_start = text[..self.trigger_cursor]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        // End of current line
+        let line_end = text[line_start..]
+            .find('\n')
+            .map(|i| line_start + i)
+            .unwrap_or(text.len());
+        // Column
+        let col = text[line_start..self.trigger_cursor].chars().count();
+        // Next line boundaries
+        if line_end >= text.len() {
+            return; // already last line
+        }
+        let next_line_start = line_end + 1; // skip the \n
+        let next_line_end = text[next_line_start..]
+            .find('\n')
+            .map(|i| next_line_start + i)
+            .unwrap_or(text.len());
+        let next_line = &text[next_line_start..next_line_end];
+        let next_len = next_line.chars().count();
+        let target_col = col.min(next_len);
+        let byte_offset: usize = next_line
+            .chars()
+            .take(target_col)
+            .map(|c| c.len_utf8())
+            .sum();
+        self.trigger_cursor = next_line_start + byte_offset;
+    }
+
+    pub fn trigger_home(&mut self) {
+        // Move to start of current line
+        let line_start = self.trigger_input[..self.trigger_cursor]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        self.trigger_cursor = line_start;
+    }
+
+    pub fn trigger_end(&mut self) {
+        // Move to end of current line
+        let text = &self.trigger_input;
+        let line_start = text[..self.trigger_cursor]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let line_end = text[line_start..]
+            .find('\n')
+            .map(|i| line_start + i)
+            .unwrap_or(text.len());
+        self.trigger_cursor = line_end;
+    }
+
+    pub fn trigger_delete_word(&mut self) {
+        if self.trigger_cursor == 0 {
+            return;
+        }
+        let before = &self.trigger_input[..self.trigger_cursor];
+        let word_start = {
+            let trimmed = before.trim_end();
+            if trimmed.is_empty() {
+                // Cursor at whitespace — delete whitespace block
+                before
+                    .rfind(|c: char| !c.is_whitespace())
+                    .map(|i| i + 1)
+                    .unwrap_or(0)
+            } else {
+                // Find start of word
+                trimmed
+                    .rfind(|c: char| c.is_whitespace())
+                    .map(|i| i + 1)
+                    .unwrap_or(0)
+            }
+        };
+        let mut new = self.trigger_input[..word_start].to_string();
+        new.push_str(&self.trigger_input[self.trigger_cursor..]);
+        self.trigger_input = new;
+        self.trigger_cursor = word_start;
+    }
+
+    pub fn trigger_clear_line(&mut self) {
+        let text = &self.trigger_input;
+        let line_start = text[..self.trigger_cursor]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let line_end = text[line_start..]
+            .find('\n')
+            .map(|i| line_start + i)
+            .unwrap_or(text.len());
+        let mut new_text = text[..line_start].to_string();
+        new_text.push_str(&text[line_end..]);
+        self.trigger_cursor = line_start;
+        self.trigger_input = new_text;
     }
 }

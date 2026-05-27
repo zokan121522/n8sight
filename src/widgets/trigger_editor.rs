@@ -64,17 +64,17 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     let total_lines = lines.len();
     let line_num_width = total_lines.to_string().len().max(2);
 
-    // Cursor position: line (0-indexed) and column within that line
-    let cursor_global = text.len();
-    let cursor_line = text[..cursor_global]
+    // Cursor position from app state
+    let cursor_byte = app.trigger_cursor.min(text.len());
+    let cursor_line = text[..cursor_byte]
         .chars()
         .filter(|&c| c == '\n')
         .count();
-    // Column = chars since last newline (or start of string)
-    let cursor_col = text[..cursor_global]
+    // Column = chars since last newline
+    let cursor_col = text[..cursor_byte]
         .rfind('\n')
-        .map(|pos| text[pos + 1..cursor_global].chars().count())
-        .unwrap_or_else(|| text[..cursor_global].chars().count());
+        .map(|pos| text[pos + 1..cursor_byte].chars().count())
+        .unwrap_or_else(|| text[..cursor_byte].chars().count());
 
     // Scroll offset to keep cursor line visible
     let scroll_offset = if cursor_line >= editor_height {
@@ -149,10 +149,12 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         Span::raw(" send  "),
         Span::styled("Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
         Span::raw(" cancel  "),
+        Span::styled("←↑↓→", Style::default().fg(Color::Yellow)),
+        Span::raw(" nav  "),
         Span::styled("Ctrl+U", Style::default().fg(Color::Yellow)),
-        Span::raw(" clear line  "),
+        Span::raw(" line  "),
         Span::styled("Ctrl+W", Style::default().fg(Color::Yellow)),
-        Span::raw(" del word"),
+        Span::raw(" word"),
         Span::raw(format!(
             "  │  Ln {} Col {}",
             cursor_line + 1,
