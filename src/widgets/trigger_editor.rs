@@ -52,25 +52,31 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
 
     // Calculate visible lines for scroll
     let editor_height = editor_inner.height.max(1) as usize;
-    let editor_width = editor_inner.width.max(1) as usize;
 
     // Build the display text: each line gets a gutter with line number
-    let lines: Vec<String> = app
-        .trigger_input
-        .lines()
-        .map(|l| l.to_string())
-        .collect();
+    let text = &app.trigger_input;
+    let lines: Vec<&str> = if text.is_empty() {
+        vec![""]
+    } else {
+        text.lines().collect()
+    };
 
-    let total_lines = lines.len().max(1);
+    let total_lines = lines.len();
     let line_num_width = total_lines.to_string().len().max(2);
 
-    // Scroll offset: try to keep cursor visible
-    // We approximate "cursor line" by counting newlines before cursor position
-    let cursor_line = app.trigger_input[..app.trigger_input.len()]
+    // Cursor position: line (0-indexed) and column within that line
+    let cursor_global = text.len();
+    let cursor_line = text[..cursor_global]
         .chars()
         .filter(|&c| c == '\n')
         .count();
+    // Column = chars since last newline (or start of string)
+    let cursor_col = text[..cursor_global]
+        .rfind('\n')
+        .map(|pos| text[pos + 1..cursor_global].chars().count())
+        .unwrap_or_else(|| text[..cursor_global].chars().count());
 
+    // Scroll offset to keep cursor line visible
     let scroll_offset = if cursor_line >= editor_height {
         cursor_line - editor_height + 1
     } else {
@@ -83,7 +89,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         .enumerate()
         .skip(scroll_offset)
         .take(editor_height)
-        .map(|(i, text)| {
+        .map(|(i, text_line)| {
             let line_num = i + 1;
             let is_current_line = i == cursor_line;
             let num_style = if is_current_line {
@@ -102,12 +108,12 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
                     format!("{:>width$} ", line_num, width = line_num_width),
                     num_style,
                 ),
-                Span::styled(text.clone(), text_style),
+                Span::styled(text_line.to_string(), text_style),
             ])
         })
         .collect::<Vec<_>>();
 
-    // Fill remaining space with empty lines
+    // Fill remaining space with empty lines (no tildes, just blank)
     let empty_lines = editor_height.saturating_sub(visible_lines.len());
     let mut all_lines = visible_lines;
     for _ in 0..empty_lines {
@@ -116,7 +122,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
                 format!("{:>width$} ", "", width = line_num_width),
                 Style::default().fg(Color::DarkGray),
             ),
-            Span::raw("~"),
+            Span::raw(""),
         ]));
     }
 
@@ -125,21 +131,11 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         .wrap(Wrap { trim: false });
     frame.render_widget(editor_widget, chunks[1]);
 
-    // ── Cursor visual: render a simulated cursor block ─────────────────
-    // We use the cursor position to show where text is being typed
-    let cursor_col = if let Some(pos) = app.trigger_input.chars().rev().position(|c| c == '\n') {
-        pos
-    } else {
-        app.trigger_input.len()
-    };
-    let cursor_col = cursor_col.min(editor_width.saturating_sub(line_num_width + 2));
-
-    // Place the cursor at the end of the text in the editor area
-    // The visual line offset within the visible window
+    // ── Cursor ─────────────────────────────────────────────────────────
     let visual_line = cursor_line.saturating_sub(scroll_offset);
     if visual_line < editor_height {
         let cursor_x = (line_num_width + 1 + cursor_col) as u16;
-        let cursor_y = (1 + visual_line) as u16; // +1 for border
+        let cursor_y = (1 + visual_line) as u16; // +1 for inner border
         frame.set_cursor_position(Position::new(
             editor_inner.x + cursor_x,
             editor_inner.y + cursor_y,

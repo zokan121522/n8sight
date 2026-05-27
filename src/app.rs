@@ -408,10 +408,20 @@ impl App {
                         return vec![];
                     }
 
-                    self.trigger_webhook_path = Some(webhook_path);
-                    self.trigger_input.clear();
+                    self.trigger_webhook_path = Some(webhook_path.clone());
+
+                    // Pre-fill with a default JSON template for immediate editing
+                    self.trigger_input = format!(
+                        r#"{{
+  "httpMethod": "POST",
+  "options": {{}},
+  "path": "{}"
+}}"#,
+                        webhook_path,
+                    );
+
                     self.input_mode = InputMode::Trigger;
-                    self.status_message = Some("Enter JSON payload (full-screen editor, Ctrl+S to send)".into());
+                    self.status_message = Some("Edit JSON payload in full-screen editor (Ctrl+S to send)".into());
                 }
                 vec![]
             }
