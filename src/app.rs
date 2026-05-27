@@ -508,11 +508,19 @@ impl App {
             }
 
             // ── Cursor navigation ──
-            KeyCode::Left | KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Left => {
                 self.trigger_cursor_left();
                 vec![]
             }
-            KeyCode::Right | KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Right => {
+                self.trigger_cursor_right();
+                vec![]
+            }
+            KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.trigger_cursor_left();
+                vec![]
+            }
+            KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.trigger_cursor_right();
                 vec![]
             }
