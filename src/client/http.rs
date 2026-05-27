@@ -174,6 +174,42 @@ impl N8nClient for HttpN8nClient {
             .wrap_err("Failed to parse execution detail")
     }
 
+    async fn trigger_webhook(&self, webhook_path: &str, json_body: &str) -> Result<String> {
+        // Webhook URL is {api_url}/webhook/{path} (not under /api/v1)
+        let base_api = self.base_url.trim_end_matches("/api/v1");
+        let url = format!("{}/webhook/{}", base_api, webhook_path);
+
+        let body: serde_json::Value = serde_json::from_str(json_body)
+            .wrap_err("Invalid JSON payload")?;
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .wrap_err(format!("Failed to POST webhook {}", url))?;
+
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+
+        if status.is_success() {
+            // Try to extract execution ID from response (n8n returns {executionId} on success)
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                if let Some(exec_id) = val.get("executionId").and_then(|v| v.as_str()) {
+                    return Ok(exec_id.to_string());
+                }
+            }
+            Ok(format!("triggered (HTTP {})", status.as_u16()))
+        } else {
+            color_eyre::eyre::bail!(
+                "Webhook error {}: {}",
+                status.as_u16(),
+                text.chars().take(300).collect::<String>()
+            );
+        }
+    }
+
     async fn retry_execution(&self, id: &str, load_workflow: bool) -> Result<ExecutionDetail> {
         let body = serde_json::json!({ "loadWorkflow": load_workflow });
         let resp = self

@@ -19,7 +19,15 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         Style::default().fg(Color::Yellow)
     };
 
-    let content = if app.input_mode == InputMode::Filter {
+    let content = if app.input_mode == InputMode::Trigger {
+        Span::styled(
+            format!(
+                " Trigger JSON > {}▌  (Enter to send, Esc to cancel)",
+                app.trigger_input
+            ),
+            Style::default().fg(Color::Cyan),
+        )
+    } else if app.input_mode == InputMode::Filter {
         let prefix = match app.view {
             View::WorkflowList => "Filter workflows",
             View::ExecutionList => "Filter executions",
@@ -46,10 +54,10 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
                 " j/k:nav  Enter:detail  a/i/0:filter  n/s/u:sort  /:search  A:toggle  p:pause  ?:help  q:quit"
             }
             View::WorkflowDetail => {
-                " h/j/k/l:pan  Tab:select node  Enter:inspect  0:reset  p:pause  ?:help  Esc:back"
+                " h/j/k/l:pan  Tab:select node  Enter:inspect  t:trigger  p:pause  ?:help  Esc:back"
             }
             View::WorkflowNodeInspect => {
-                " j/k:scroll  Ctrl+D/U:page  g/G:top/btm  n/N:next/prev node  Esc:back  ?:help"
+                " j/k:scroll  Ctrl+D/U:page  g/G:top/btm  n/N:next/prev node  t:trigger  Esc:back  ?:help"
             }
             View::ExecutionList => {
                 " j/k:nav  Enter:detail  1-5:status  0:clear  n/s/d:sort  /:search  p:pause  ?:help  q:quit"

@@ -46,6 +46,13 @@ pub enum Action {
     OpenInBrowser,
     ToggleHelp,
 
+    // -- Trigger webhook --
+    StartTrigger,
+    TriggerChar(char),
+    TriggerBackspace,
+    SubmitTrigger,
+    TriggerWebhookResult(String),
+
     // -- Data loaded (responses from the async worker) --
     WorkflowsLoaded(Vec<WorkflowSummary>),
     WorkflowDetailLoaded(Box<WorkflowDetail>),

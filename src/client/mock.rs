@@ -348,6 +348,13 @@ impl N8nClient for MockN8nClient {
         })
     }
 
+    async fn trigger_webhook(&self, _webhook_path: &str, json_body: &str) -> Result<String> {
+        // Simulate triggering — always "succeeds" and returns a fake execution ID
+        let _body: serde_json::Value = serde_json::from_str(json_body)
+            .map_err(|e| color_eyre::eyre::eyre!("Mock: invalid JSON: {}", e))?;
+        Ok("mock-exec-2001".to_string())
+    }
+
     async fn retry_execution(&self, id: &str, _load_workflow: bool) -> Result<ExecutionDetail> {
         self.get_execution(id, false).await
     }

@@ -13,6 +13,8 @@ pub struct Config {
     pub page_size: u32,
     #[serde(default = "default_log_level")]
     pub log_level: String,
+    #[serde(default = "default_refresh_interval")]
+    pub refresh_interval_secs: u64,
 }
 
 fn default_page_size() -> u32 {
@@ -23,6 +25,10 @@ fn default_log_level() -> String {
     "warn".to_string()
 }
 
+fn default_refresh_interval() -> u64 {
+    15
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -31,6 +37,7 @@ impl Default for Config {
             project_id: None,
             page_size: default_page_size(),
             log_level: default_log_level(),
+            refresh_interval_secs: default_refresh_interval(),
         }
     }
 }
@@ -59,6 +66,11 @@ impl Config {
         if let Ok(page_size) = std::env::var("N8N_PAGE_SIZE") {
             if let Ok(ps) = page_size.parse() {
                 config.page_size = ps;
+            }
+        }
+        if let Ok(interval) = std::env::var("N8N_REFRESH_INTERVAL") {
+            if let Ok(ri) = interval.parse() {
+                config.refresh_interval_secs = ri;
             }
         }
 
@@ -107,6 +119,9 @@ impl Config {
         }
         if other.page_size != default_page_size() {
             self.page_size = other.page_size;
+        }
+        if other.refresh_interval_secs != default_refresh_interval() {
+            self.refresh_interval_secs = other.refresh_interval_secs;
         }
     }
 

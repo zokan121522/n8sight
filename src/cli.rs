@@ -19,4 +19,8 @@ pub struct Cli {
     /// Use mock data (no n8n connection required)
     #[arg(long, default_value_t = false)]
     pub mock: bool,
+
+    /// Auto-refresh interval in seconds (overrides config file and N8N_REFRESH_INTERVAL env)
+    #[arg(long)]
+    pub refresh: Option<u64>,
 }

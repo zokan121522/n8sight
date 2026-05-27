@@ -43,8 +43,11 @@ pub trait N8nClient: Send + Sync {
     async fn get_execution(&self, id: &str, include_data: bool) -> Result<ExecutionDetail>;
     async fn retry_execution(&self, id: &str, load_workflow: bool) -> Result<ExecutionDetail>;
 
+    // -- Webhook trigger --
+    /// Trigger a webhook with a JSON payload. Returns the execution ID if successful.
+    async fn trigger_webhook(&self, webhook_path: &str, json_body: &str) -> Result<String>;
+
     // -- Utility --
-    /// Fetch all executions across pages, up to max_pages.
     async fn list_all_executions(
         &self,
         filter: ExecutionFilter,

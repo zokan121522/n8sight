@@ -27,6 +27,7 @@ pub enum View {
 pub enum InputMode {
     Normal,
     Filter,
+    Trigger,
 }
 
 // ─── App state ───────────────────────────────────────────────────────────────
@@ -87,6 +88,10 @@ pub struct App {
     // -- Filter input --
     pub filter_input: String,
 
+    // -- Trigger webhook --
+    pub trigger_input: String,
+    pub trigger_webhook_path: Option<String>,
+
     // -- Render context: captured once per frame --
     pub now: DateTime<Utc>,
 }
@@ -108,7 +113,7 @@ pub enum SortKind {
 // ─── Constructor / Init ──────────────────────────────────────────────────────
 
 impl App {
-    pub fn new(base_url: String) -> Self {
+    pub fn new(base_url: String, refresh_interval_secs: u64) -> Self {
         Self {
             view: View::WorkflowList,
             input_mode: InputMode::Normal,
@@ -121,7 +126,7 @@ impl App {
             base_url,
 
             auto_refresh: true,
-            auto_refresh_interval_secs: 15,
+            auto_refresh_interval_secs: refresh_interval_secs,
             last_refresh: Utc::now(),
 
             workflows: Vec::new(),
@@ -155,6 +160,10 @@ impl App {
             insight_scroll: ScrollState::new(),
 
             filter_input: String::new(),
+
+            trigger_input: String::new(),
+            trigger_webhook_path: None,
+
             now: Utc::now(),
         }
     }
@@ -382,6 +391,71 @@ impl App {
                 self.loading = false;
                 vec![]
             }
+
+            // ── Trigger webhook ──
+            Action::StartTrigger => {
+                // Extract webhook path from current workflow detail
+                if let Some(ref detail) = self.workflow_detail {
+                    let webhook_path = detail.nodes.iter()
+                        .find(|n| n.node_type.contains("webhook"))
+                        .and_then(|n| n.parameters.get("path"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    if webhook_path.is_empty() {
+                        self.status_message = Some("No webhook node found in this workflow".into());
+                        return vec![];
+                    }
+
+                    self.trigger_webhook_path = Some(webhook_path);
+                    self.trigger_input.clear();
+                    self.input_mode = InputMode::Trigger;
+                    self.status_message = Some("Enter JSON payload (Esc to cancel, Enter to send)".into());
+                }
+                vec![]
+            }
+            Action::TriggerChar(c) => {
+                self.trigger_input.push(c);
+                vec![]
+            }
+            Action::TriggerBackspace => {
+                self.trigger_input.pop();
+                vec![]
+            }
+            Action::SubmitTrigger => {
+                self.input_mode = InputMode::Normal;
+                let input = std::mem::take(&mut self.trigger_input);
+
+                // Validate JSON
+                if input.trim().is_empty() {
+                    self.status_message = Some("Trigger cancelled — empty payload".into());
+                    return vec![];
+                }
+                if serde_json::from_str::<serde_json::Value>(&input).is_err() {
+                    self.status_message = Some("Invalid JSON — trigger cancelled".into());
+                    return vec![];
+                }
+
+                if let Some(ref path) = self.trigger_webhook_path.clone() {
+                    self.loading = true;
+                    self.status_message = Some(format!("Triggering webhook '{}'...", path));
+                    return vec![Effect::SendWorkerRequest(WorkerRequest::TriggerWebhook(
+                        path.clone(),
+                        input,
+                    ))];
+                }
+                vec![]
+            }
+            Action::TriggerWebhookResult(result) => {
+                self.loading = false;
+                let msg = format!("Webhook triggered! Result: {}", result);
+                self.status_message = Some(msg);
+                // Refresh executions to show the new one
+                vec![Effect::SendWorkerRequest(WorkerRequest::FetchExecutions(
+                    ExecutionFilter::default(),
+                ))]
+            }
         }
     }
 
@@ -391,6 +465,7 @@ impl App {
         match self.input_mode {
             InputMode::Filter => self.handle_filter_key(key),
             InputMode::Normal => self.handle_normal_key(key),
+            InputMode::Trigger => self.handle_trigger_key(key),
         }
     }
 
@@ -400,6 +475,21 @@ impl App {
             KeyCode::Enter => self.update(Action::ApplyFilter),
             KeyCode::Backspace => self.update(Action::FilterBackspace),
             KeyCode::Char(c) => self.update(Action::FilterChar(c)),
+            _ => vec![],
+        }
+    }
+
+    fn handle_trigger_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.trigger_input.clear();
+                self.status_message = Some("Trigger cancelled".into());
+                vec![]
+            }
+            KeyCode::Enter => self.update(Action::SubmitTrigger),
+            KeyCode::Backspace => self.update(Action::TriggerBackspace),
+            KeyCode::Char(c) => self.update(Action::TriggerChar(c)),
             _ => vec![],
         }
     }
@@ -541,6 +631,32 @@ impl App {
             (View::ExecutionList, KeyCode::Char('s')) => Action::SortByStatus,
             (View::ExecutionList, KeyCode::Char('n')) => Action::SortByName,
             (View::ExecutionList, KeyCode::Char('d')) => Action::SortByDuration,
+
+            // ── Workflow detail keys (trigger webhook) ──
+            (View::WorkflowDetail, KeyCode::Char('t')) => {
+                // Check if workflow has a webhook node before entering trigger mode
+                let has_webhook = self.workflow_detail.as_ref()
+                    .map(|d| d.nodes.iter().any(|n| n.node_type.contains("webhook")))
+                    .unwrap_or(false);
+                if has_webhook {
+                    Action::StartTrigger
+                } else {
+                    self.status_message = Some("No webhook node in this workflow".into());
+                    return vec![];
+                }
+            }
+            (View::WorkflowNodeInspect, KeyCode::Char('t')) => {
+                // Same from node inspect view
+                let has_webhook = self.workflow_detail.as_ref()
+                    .map(|d| d.nodes.iter().any(|n| n.node_type.contains("webhook")))
+                    .unwrap_or(false);
+                if has_webhook {
+                    Action::StartTrigger
+                } else {
+                    self.status_message = Some("No webhook node in this workflow".into());
+                    return vec![];
+                }
+            }
 
             // ── Execution detail keys ──
             (View::ExecutionDetail, KeyCode::Char('R')) => Action::RetryExecution,

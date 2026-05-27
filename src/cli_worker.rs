@@ -18,6 +18,7 @@ pub enum WorkerRequest {
     ActivateWorkflow(String),
     DeactivateWorkflow(String),
     RetryExecution(String),
+    TriggerWebhook(String, String), // (webhook_path, json_body)
 }
 
 /// The CLI worker serializes async API calls and sends results back as Actions.
@@ -158,6 +159,13 @@ impl CliWorker {
                         }
                     }
                     Err(e) => Action::LoadError(format!("Failed to retry: {}", e)),
+                }
+            }
+
+            WorkerRequest::TriggerWebhook(path, body) => {
+                match self.client.trigger_webhook(&path, &body).await {
+                    Ok(result) => Action::TriggerWebhookResult(result),
+                    Err(e) => Action::LoadError(format!("Webhook trigger failed: {}", e)),
                 }
             }
         }

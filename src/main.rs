@@ -55,9 +55,12 @@ async fn main() -> Result<()> {
     let event_handler = event::EventHandler::new(action_tx.clone());
     event_handler.start();
 
+    // CLI --refresh overrides config file and env var
+    let refresh_interval = cli.refresh.unwrap_or(cfg.refresh_interval_secs);
+
     // Initialize
     let mut terminal = tui::Tui::new()?;
-    let mut app = app::App::new(cfg.api_url.clone());
+    let mut app = app::App::new(cfg.api_url.clone(), refresh_interval);
 
     // Process startup effects
     let init_effects = app::App::init_effects();

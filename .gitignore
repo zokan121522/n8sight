@@ -36,3 +36,4 @@ logs/
 # Coverage
 tarpaulin-report.html
 lcov.info
+n8s
