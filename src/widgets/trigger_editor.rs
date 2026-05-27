@@ -135,7 +135,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     let visual_line = cursor_line.saturating_sub(scroll_offset);
     if visual_line < editor_height {
         let cursor_x = (line_num_width + 1 + cursor_col) as u16;
-        let cursor_y = (1 + visual_line) as u16; // +1 for inner border
+        let cursor_y = visual_line as u16; // inside editor_inner, which is already inside the border
         frame.set_cursor_position(Position::new(
             editor_inner.x + cursor_x,
             editor_inner.y + cursor_y,
