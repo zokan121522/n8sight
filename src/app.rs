@@ -411,7 +411,7 @@ impl App {
                     self.trigger_webhook_path = Some(webhook_path);
                     self.trigger_input.clear();
                     self.input_mode = InputMode::Trigger;
-                    self.status_message = Some("Enter JSON payload (Esc to cancel, Enter to send)".into());
+                    self.status_message = Some("Enter JSON payload (full-screen editor, Ctrl+S to send)".into());
                 }
                 vec![]
             }
@@ -487,8 +487,37 @@ impl App {
                 self.status_message = Some("Trigger cancelled".into());
                 vec![]
             }
-            KeyCode::Enter => self.update(Action::SubmitTrigger),
+            KeyCode::Enter => {
+                // Insert newline for multi-line JSON
+                self.trigger_input.push('\n');
+                vec![]
+            }
             KeyCode::Backspace => self.update(Action::TriggerBackspace),
+            KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                // Ctrl+S to submit
+                self.update(Action::SubmitTrigger)
+            }
+            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                // Delete word backward
+                let trimmed = self.trigger_input.trim_end().to_string();
+                if let Some(pos) = trimmed[..trimmed.len().saturating_sub(1)]
+                    .rfind(|c: char| c == ' ' || c == '\n' || c == '\t')
+                {
+                    self.trigger_input.truncate(pos + 1);
+                } else {
+                    self.trigger_input.clear();
+                }
+                vec![]
+            }
+            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                // Clear line (delete from cursor to start of line)
+                if let Some(pos) = self.trigger_input.rfind('\n') {
+                    self.trigger_input.truncate(pos + 1);
+                } else {
+                    self.trigger_input.clear();
+                }
+                vec![]
+            }
             KeyCode::Char(c) => self.update(Action::TriggerChar(c)),
             _ => vec![],
         }

@@ -21,10 +21,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
 
     let content = if app.input_mode == InputMode::Trigger {
         Span::styled(
-            format!(
-                " Trigger JSON > {}▌  (Enter to send, Esc to cancel)",
-                app.trigger_input
-            ),
+            " ⚡ Editing webhook payload (full-screen)  —  Ctrl+S to send, Esc to cancel",
             Style::default().fg(Color::Cyan),
         )
     } else if app.input_mode == InputMode::Filter {
